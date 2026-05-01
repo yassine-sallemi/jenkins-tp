@@ -4,6 +4,7 @@ pipeline {
     tools {
         // Utilise l'outil NodeJS que tu as configuré dans Jenkins
         nodejs 'node-24'
+        terraform 'terraform-tool'
     }
 
     environment {
@@ -91,6 +92,44 @@ pipeline {
                     sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
                     sh "docker push ${DOCKER_IMAGE}:latest"
                 }
+            }
+        }
+
+        stage('Infrastructure & Deploy (Terraform)') {
+            steps {
+                echo 'Déploiement sur Kubernetes avec Terraform...'
+                dir('terraform') {
+                    // Déverrouille le kubeconfig secret et le stocke dans KUBECONFIG_FILE
+                    withCredentials([file(credentialsId: 'k8s-kubeconfig', variable: 'KUBECONFIG_FILE')]) {
+                        // Initialise Terraform
+                        sh 'terraform init'
+
+                        // Exécute Terraform en lui passant la variable d'environnement KUBECONFIG
+                        sh """
+                        export KUBECONFIG=\$KUBECONFIG_FILE
+                        terraform apply -auto-approve \
+                          -var="docker_image=${DOCKER_IMAGE}:${IMAGE_TAG}"
+                        """
+                    }
+                }
+            }
+        }
+        stage('Smoke Test') {
+            steps {
+                echo 'Vérification de la disponibilité de l\'application...'
+                sleep 15
+
+                // On cible le Control Plane, car il est garanti d'exister
+                sh '''
+                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://devops-tp-control-plane:30080)
+
+                if [ "$HTTP_STATUS" -eq 200 ]; then
+                    echo "Smoke Test OK! Application accessible."
+                else
+                    echo "Smoke Test FAILED! Code HTTP: $HTTP_STATUS"
+                    exit 1
+                fi
+                '''
             }
         }
     }
