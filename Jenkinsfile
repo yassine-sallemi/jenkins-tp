@@ -105,12 +105,11 @@ pipeline {
                         sh 'terraform init'
 
                         // Exécute Terraform en lui passant la variable d'environnement KUBECONFIG
-                        sh """
-                        export KUBECONFIG=\$KUBECONFIG_FILE
+                        sh '''
                         terraform apply -auto-approve \
-                          -var="docker_image=${DOCKER_IMAGE}:${IMAGE_TAG}"
-                          -var="kubeconfig_path=${KUBECONFIG_FILE}"
-                        """
+                          -var="docker_image=$DOCKER_IMAGE:$IMAGE_TAG" \
+                          -var="kubeconfig_path=$KUBECONFIG_FILE"
+                        '''
                     }
                 }
             }
