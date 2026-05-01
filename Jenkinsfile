@@ -109,6 +109,7 @@ pipeline {
                         export KUBECONFIG=\$KUBECONFIG_FILE
                         terraform apply -auto-approve \
                           -var="docker_image=${DOCKER_IMAGE}:${IMAGE_TAG}"
+                          -var="kubeconfig_path=${KUBECONFIG_FILE}"
                         """
                     }
                 }

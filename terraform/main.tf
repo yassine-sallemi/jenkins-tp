@@ -16,6 +16,15 @@ variable "docker_image" {
   default     = "yassine251/tp4-devops-image"
 }
 
+variable "kubeconfig_path" {
+  description = "Chemin vers le fichier kubeconfig"
+  type        = string
+}
+
+provider "kubernetes" {
+  config_path = var.kubeconfig_path
+}
+
 # Configuration du provider Kubernetes
 # Terraform cherchera le fichier kubeconfig par défaut ou celui passé en variable
 provider "kubernetes" {
