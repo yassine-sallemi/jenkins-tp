@@ -121,7 +121,7 @@ pipeline {
 
                 // On cible le Control Plane, car il est garanti d'exister
                 sh '''
-                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://devops-tp-control-plane:30080)
+                HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://devops-tp-control-plane:30080/no)
 
                 if [ "$HTTP_STATUS" -eq 200 ]; then
                     echo "Smoke Test OK! Application accessible."
