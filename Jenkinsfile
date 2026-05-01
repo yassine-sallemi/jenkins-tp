@@ -1,21 +1,22 @@
 pipeline {
-    agent any 
-    
+    agent any
+
     tools {
         // Utilise l'outil NodeJS que tu as configuré dans Jenkins
-        nodejs 'node-24' 
+        nodejs 'node-24'
     }
-    
+
     environment {
-        // Utilise l'outil SonarQube Scanner que tu as configuré dans Jenkins
-        SCANNER_HOME = tool 'sonarqube-scanner' 
+        SCANNER_HOME = tool 'sonarqube-scanner'
+        DOCKER_IMAGE = 'yassine251/tp4-devops-image'
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
     }
 
     stages {
         stage('Checkout') {
             steps {
                 // Récupère automatiquement le code depuis GitHub (grâce au webhook ngrok)
-                checkout scm 
+                checkout scm
             }
         }
 
@@ -29,8 +30,7 @@ pipeline {
         stage('Unit Tests') {
             steps {
                 echo 'Exécution des tests unitaires...'
-                // N'oublie pas de t'assurer que cette commande génère bien ton rapport de couverture
-                sh 'npm run test' 
+                sh 'npm run test'
             }
         }
 
@@ -38,7 +38,7 @@ pipeline {
             steps {
                 echo 'Analyse du code avec SonarQube...'
                 // Utilise le serveur SonarQube configuré dans Jenkins
-                withSonarQubeEnv('sonarqube-server') { 
+                withSonarQubeEnv('sonarqube-server') {
                     sh '''
                     $SCANNER_HOME/bin/sonar-scanner \
                       -Dsonar.projectKey=tp4-devops \
@@ -56,6 +56,40 @@ pipeline {
                 timeout(time: 10, unit: 'MINUTES') {
                     // Met le pipeline en pause et attend la réponse de SonarQube (via son propre webhook vers Jenkins)
                     waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                echo 'Construction de l\'image Docker...'
+                // Construit l'image avec le tag du numéro de build
+                sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
+                // Bonne pratique : on met aussi à jour le tag 'latest'
+                sh "docker build -t ${DOCKER_IMAGE}:latest ."
+            }
+        }
+
+        stage('Image Scanning (Trivy)') {
+            steps {
+                echo 'Scan de l\'image avec Trivy...'
+                // Lance Trivy via Docker en lui partageant le socket Docker local
+                // On lui demande de chercher les vulnérabilités HIGH et CRITICAL
+                sh """
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                  aquasec/trivy image --severity HIGH,CRITICAL ${DOCKER_IMAGE}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                echo 'Authentification et envoi de l\'image sur Docker Hub...'
+                // Utilise l'ID du credential créé dans Jenkins
+                withDockerRegistry(credentialsId: 'docker-hub-credentials') {
+                    // Push des deux tags
+                    sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
+                    sh "docker push ${DOCKER_IMAGE}:latest"
                 }
             }
         }
