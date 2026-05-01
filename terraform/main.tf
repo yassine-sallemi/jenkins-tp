@@ -25,12 +25,6 @@ provider "kubernetes" {
   config_path = var.kubeconfig_path
 }
 
-# Configuration du provider Kubernetes
-# Terraform cherchera le fichier kubeconfig par défaut ou celui passé en variable
-provider "kubernetes" {
-  config_path = "~/.kube/config"
-}
-
 # 1. Création du Deployment Kubernetes
 resource "kubernetes_deployment" "node_app" {
   metadata {
