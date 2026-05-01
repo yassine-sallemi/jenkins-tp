@@ -85,7 +85,6 @@ pipeline {
         stage('Docker Push') {
             steps {
                 echo 'Authentification et envoi de l\'image sur Docker Hub...'
-                // Utilise l'ID du credential créé dans Jenkins
                 withDockerRegistry(credentialsId: 'docker-hub-credentials', url: '') {
                     // Push des deux tags
                     sh "docker push ${DOCKER_IMAGE}:${IMAGE_TAG}"
